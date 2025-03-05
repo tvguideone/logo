@@ -5,7 +5,7 @@ DOWNLOAD_DIR="downloaded_images"
 mkdir -p $DOWNLOAD_DIR
 
 # Download images
-for id in {1..100}; do
+for id in {1..10000}; do
     url="https://static.quickgrow.net/football/leagues/${id}.png"
     output="${DOWNLOAD_DIR}/${id}.png"
     
