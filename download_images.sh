@@ -10,7 +10,7 @@ for id in {1..10000}; do
     output="${DOWNLOAD_DIR}/${id}.png"
     
     # Use curl to download the image and check if it exists
-    curl -s -f -o $output $url
+    curl --max-time 2 -s -f -o $output $url
     if [ $? -ne 0 ]; then
         echo "Image with id ${id} does not exist, skipping..."
         rm -f $output
