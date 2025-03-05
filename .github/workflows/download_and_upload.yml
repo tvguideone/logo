@@ -29,7 +29,8 @@ jobs:
           release_name: Manual Release ${{ github.run_id }}
           draft: false
           prerelease: false
-          token: ${{ secrets.RELEASE_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload ZIP to Release
         uses: actions/upload-release-asset@v1
@@ -38,4 +39,5 @@ jobs:
           asset_path: ./downloaded_images.zip
           asset_name: downloaded_images.zip
           asset_content_type: application/zip
-          token: ${{ secrets.RELEASE_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
