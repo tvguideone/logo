@@ -20,12 +20,7 @@ stats = {
 # Step 1: List of URLs to scrape
 base_urls = [
     "https://www.flashscore.com/football/africa",
-    "https://www.flashscore.com/football/asia",
-    "https://www.flashscore.com/football/australia-oceania",
-    "https://www.flashscore.com/football/europe",
-    "https://www.flashscore.com/football/north-central-america",
-    "https://www.flashscore.com/football/south-america",
-    "https://www.flashscore.com/football/world"
+    "https://www.flashscore.com/football/asia"
 ]
 
 headers = {
