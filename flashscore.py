@@ -23,7 +23,7 @@ stats = {
 
 # Step 1: List of URLs to scrape
 base_urls = [
-    "https://www.flashscore.com/football/africa",
+    "https://www.flashscore.com/football/australia-oceania",
     "https://www.flashscore.com/football/asia"
 ]
 
@@ -31,17 +31,12 @@ headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 }
 
-def normalize_filename(name):
-    """Convert name to lowercase and replace spaces with hyphens"""
-    name = name.lower()
-    name = re.sub(r'\s+', '-', name)  # Replace multiple spaces with a single hyphen
-    name = re.sub(r' ', '-', name)    # Replace remaining spaces with hyphen
-    return name
-
-def sanitize_folder_name(name):
-    """Sanitize name for use as folder name by replacing invalid characters"""
+def sanitize_filename(name):
+    """Sanitize filename to be safe for filesystem by replacing invalid characters"""
     # Replace slashes, backslashes and other problematic characters
+    name = name.lower()
     name = re.sub(r'[\\/:*?"<>|]', '-', name)
+    name = re.sub(r'\s+', '-', name)  # Replace multiple spaces with a single hyphen
     return name
 
 def is_png_image(url):
@@ -61,7 +56,7 @@ def extract_region_name_from_html(soup):
         
         if match:
             region_name = match.group(1).strip()  # Group 1 contains the region name
-            return sanitize_folder_name(region_name)
+            return sanitize_filename(region_name)
         
         # Fallback: Try using BeautifulSoup to find any breadcrumb link after a span
         for span in soup.find_all('span'):
@@ -70,7 +65,7 @@ def extract_region_name_from_html(soup):
                 next_element.name == 'a' and 
                 'breadcrumb__link' in next_element.get('class', [])):
                 region_name = next_element.text.strip()
-                return sanitize_folder_name(region_name)
+                return sanitize_filename(region_name)
         
         # Second fallback: Look for any breadcrumb link
         breadcrumbs = soup.select('a.breadcrumb__link')
@@ -79,20 +74,20 @@ def extract_region_name_from_html(soup):
                 # Check if this breadcrumb appears to be a region
                 if breadcrumb.text.strip():
                     region_name = breadcrumb.text.strip()
-                    return sanitize_folder_name(region_name)
+                    return sanitize_filename(region_name)
         
         # Last fallback: Use the last part of the URL
         for url in base_urls:
             if url in html_str:
                 path = url.split('/')[-1]
                 region_name = path.replace('-', ' ').title()
-                return sanitize_folder_name(region_name)
+                return sanitize_filename(region_name)
                 
-        return "Unknown-Region"
+        return "unknown-region"
         
     except Exception as e:
         print(f"Error extracting region name: {e}", flush=True)
-        return "Unknown-Region"
+        return "unknown-region"
 
 def download_image(img_url, region_folder, img_name):
     """Download and save image to specified region folder if it's a PNG"""
@@ -104,6 +99,9 @@ def download_image(img_url, region_folder, img_name):
         
         # Keep original name for display
         original_name = img_name
+        
+        # Sanitize region folder name
+        region_folder = sanitize_filename(region_folder)
             
         # Create full folder path
         full_folder_path = os.path.join(OUTPUT_DIR, region_folder)
@@ -112,13 +110,13 @@ def download_image(img_url, region_folder, img_name):
         if not os.path.exists(full_folder_path):
             os.makedirs(full_folder_path)
         
-        # Normalize image name for filename
-        normalized_name = normalize_filename(img_name)
-        if not normalized_name.endswith('.png'):
-            normalized_name += '.png'
+        # Sanitize image name for filename
+        sanitized_name = sanitize_filename(img_name)
+        if not sanitized_name.endswith('.png'):
+            sanitized_name += '.png'
             
         # Full path for saving the image
-        img_path = os.path.join(full_folder_path, normalized_name)
+        img_path = os.path.join(full_folder_path, sanitized_name)
         
         # Check if file already exists
         if os.path.exists(img_path):
@@ -142,7 +140,7 @@ def download_image(img_url, region_folder, img_name):
         return True
         
     except Exception as e:
-        print(f"! Error with {img_name}: {str(e)[:50]}...", flush=True)
+        print(f"! Error with {img_name}: {str(e)}", flush=True)  # Show full error message
         stats["error"] += 1
         return False
 
@@ -203,7 +201,7 @@ def scrape_images(tournament_data):
                 download_image(img_url, region, img_name)
         
     except Exception as e:
-        print(f"Error processing tournament: {str(e)[:50]}...", flush=True)
+        print(f"Error processing tournament: {str(e)}", flush=True)  # Full error message
         stats["error"] += 1
 
 def main():
