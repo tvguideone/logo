@@ -5,6 +5,10 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from collections import defaultdict
 
+# Force unbuffered output
+import sys
+sys.stdout.reconfigure(line_buffering=True)  # Python 3.7+
+
 # Output base directory
 OUTPUT_DIR = "./output"
 
@@ -34,6 +38,12 @@ def normalize_filename(name):
     name = re.sub(r' ', '-', name)    # Replace remaining spaces with hyphen
     return name
 
+def sanitize_folder_name(name):
+    """Sanitize name for use as folder name by replacing invalid characters"""
+    # Replace slashes, backslashes and other problematic characters
+    name = re.sub(r'[\\/:*?"<>|]', '-', name)
+    return name
+
 def is_png_image(url):
     """Check if the URL points to a PNG image"""
     # Check the file extension in the URL
@@ -50,7 +60,8 @@ def extract_region_name_from_html(soup):
         match = pattern.search(html_str)
         
         if match:
-            return match.group(1).strip()  # Group 1 contains the region name
+            region_name = match.group(1).strip()  # Group 1 contains the region name
+            return sanitize_folder_name(region_name)
         
         # Fallback: Try using BeautifulSoup to find any breadcrumb link after a span
         for span in soup.find_all('span'):
@@ -58,7 +69,8 @@ def extract_region_name_from_html(soup):
             if (next_element and hasattr(next_element, 'name') and 
                 next_element.name == 'a' and 
                 'breadcrumb__link' in next_element.get('class', [])):
-                return next_element.text.strip()
+                region_name = next_element.text.strip()
+                return sanitize_folder_name(region_name)
         
         # Second fallback: Look for any breadcrumb link
         breadcrumbs = soup.select('a.breadcrumb__link')
@@ -66,19 +78,21 @@ def extract_region_name_from_html(soup):
             for breadcrumb in breadcrumbs:
                 # Check if this breadcrumb appears to be a region
                 if breadcrumb.text.strip():
-                    return breadcrumb.text.strip()
+                    region_name = breadcrumb.text.strip()
+                    return sanitize_folder_name(region_name)
         
         # Last fallback: Use the last part of the URL
         for url in base_urls:
             if url in html_str:
                 path = url.split('/')[-1]
-                return path.replace('-', ' ').title()
+                region_name = path.replace('-', ' ').title()
+                return sanitize_folder_name(region_name)
                 
-        return "Unknown Region"
+        return "Unknown-Region"
         
     except Exception as e:
-        print(f"Error extracting region name: {e}")
-        return "Unknown Region"
+        print(f"Error extracting region name: {e}", flush=True)
+        return "Unknown-Region"
 
 def download_image(img_url, region_folder, img_name):
     """Download and save image to specified region folder if it's a PNG"""
@@ -123,12 +137,12 @@ def download_image(img_url, region_folder, img_name):
         stats["downloaded"] += 1
         stats["regions"][region_folder]["images"] += 1
         
-        # Print progress
-        print(f"+ {original_name}")
+        # Print progress with flush=True for immediate display
+        print(f"+ {original_name}", flush=True)
         return True
         
     except Exception as e:
-        print(f"! Error with {img_name}: {str(e)[:50]}...")
+        print(f"! Error with {img_name}: {str(e)[:50]}...", flush=True)
         stats["error"] += 1
         return False
 
@@ -163,7 +177,7 @@ def scrape_tournament_pages(base_url):
         return tournaments
         
     except Exception as e:
-        print(f"Error scraping {base_url}: {e}")
+        print(f"Error scraping {base_url}: {e}", flush=True)
         stats["error"] += 1
         return []
 
@@ -189,7 +203,7 @@ def scrape_images(tournament_data):
                 download_image(img_url, region, img_name)
         
     except Exception as e:
-        print(f"Error processing tournament: {str(e)[:50]}...")
+        print(f"Error processing tournament: {str(e)[:50]}...", flush=True)
         stats["error"] += 1
 
 def main():
@@ -197,7 +211,7 @@ def main():
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
 
-    print("Flashscore...")
+    print("Flashscore...", flush=True)
     
     # Process each base URL
     for base_url in base_urls:
@@ -209,20 +223,20 @@ def main():
         # Display region header with tournament count
         region_name = stats["current_region"]
         tournament_count = stats["regions"][region_name]["tournaments"]
-        print(f"\n{region_name} ({tournament_count} tournaments)")
+        print(f"\n{region_name} ({tournament_count} tournaments)", flush=True)
         
         # Process each tournament and download images
         for tournament in tournaments:
             scrape_images(tournament)
-            # Delay has been removed
+            # No delay
     
     # Display final statistics
     print("\nTotal: {0} done, {1} skip, {2} error".format(
         stats["downloaded"], 
         stats["skipped_not_png"], 
         stats["error"]
-    ))
-    print("\nComplete!")
+    ), flush=True)
+    print("\nComplete!", flush=True)
 
 if __name__ == "__main__":
     main()
